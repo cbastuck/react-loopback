@@ -122,14 +122,13 @@ import { createDataLoader } from 'react-loopback';
 
 A wrapper for a React component that manages the data fetching from LoopBack
 server automatically. The wrapped component will receive the `DataLoader`
-instance as `dataloader` property. And, for each query, two extra parameters
-will be passed:
+instance as `dataloader` property. And, for each query, an extra property will be introduced with the following shape:
 
-- `{name}` → The data received from LoopBack API
-- `{name}_status` → A string that can have the following values:
-  - `'loading'` → When new data is currently being loaded;
-  - `'ok'` → When data was correctly loaded;
-  - `'error: {error_message}'` → When an error occurs.
+ - `{name}` →
+    - `'value'` → The data received from LoopBack API
+    - `'loaded'` → Boolean indicating that loading finished
+    - `'error'` → In case of an error the error string
+    - `'reload'` → parameterless function triggering a reload of the data
 
 The options object:
 

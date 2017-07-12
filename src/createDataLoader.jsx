@@ -8,12 +8,12 @@ import { debounce } from './util'
  * instance as `dataloader` property. And, for each query, two extra parameters
  * will be passed:
  *
- * - `{name}` → The data received from LoopBack API
- * - `{name}_status` → A string that can have the following values:
- *   - `'loading'` → When new data is currently being loaded;
- *   - `'ok'` → When data was correctly loaded;
- *   - `'error: {error_message}'` → When an error occurs.
- *
+ * - `{name}` → {
+ *       value: The data received from LoopBack API
+ *      loaded: Boolean indicating that loading finished
+ *      error: In case of an error the error string
+ *      reload: parameterless function triggering a reload of the data
+ *     }
  * The options object:
  *
  * ```javascript
@@ -277,8 +277,7 @@ export function createDataLoader(Component, options = {}) {
 
       const url = DataLoader._buildUrl(cfg.endpoint, filter);
 
-      const status = cfg.name + '_status';
-      this._data[status] = 'loading';
+      this._data[cfg.name] = { loaded: false };
       this.forceUpdate();
 
       fetch(url)
@@ -287,7 +286,7 @@ export function createDataLoader(Component, options = {}) {
           return response.json();
         })
         .then(json => {
-          this._data[cfg.name] = cfg.transform(
+          return cfg.transform(
             json,
             this._data[cfg.name],
             filter,
@@ -295,9 +294,14 @@ export function createDataLoader(Component, options = {}) {
             options);
         })
         .then(
-          () => this._data[status] = 'ok',
-          (err) => this._data[status] = 'error: ' + err.message
+          (value) => ({ value, loaded: true }),
+          (err) => ({ value: null, loaded: true, error: err.message })
         )
+        .then(
+          (data) => {
+            const reload = () => this.load(cfg.name);
+            return this._data[cfg.name] = { ...data, reload };
+          })
         .then(() => this.forceUpdate());
     },
 
