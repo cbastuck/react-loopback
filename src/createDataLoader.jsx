@@ -1,6 +1,8 @@
 import React from 'react';
 import config from './config';
-import { debounce } from './util'
+import { debounce } from './util';
+
+import hoistStatics from 'hoist-non-react-statics';
 
 /**
  * A wrapper for a React component that manages the data fetching from LoopBack
@@ -81,6 +83,7 @@ import { debounce } from './util'
  * @return {DataLoader}                The DataLoader wrapper component
  */
 export function createDataLoader(Component, options = {}) {
+
   if (!Component) {
     throw new Error('Component is required');
   }
@@ -89,132 +92,132 @@ export function createDataLoader(Component, options = {}) {
     throw new Error('options.queries is required');
   }
 
-  const spec = {
-    statics: {
-      /**
-       * Get baseUrl from config and make sure there is a slash at the end.
-       * @return {string} The API base URL
-       */
-      _getBaseUrl() {
-        let baseUrl = config.get('baseUrl') || '';
-        if (baseUrl.slice(-1) !== '/') {
-          baseUrl += '/';
-        }
-        return baseUrl;
-      },
 
-      /**
-       * Given the endpoint and its filter, this will build the full
-       * URL to query Loopback
-       * @param  {string} endpoint Name of the route
-       * @param  {object} filter   Filter object
-       * @return {string}          Loopback URL
-       */
-      _buildUrl(endpoint, filter) {
-        const baseUrl = DataLoader._getBaseUrl();
-        let url = baseUrl + endpoint
-        if (filter) {
-          url += '?filter=' + encodeURIComponent(JSON.stringify(filter));
-        }
-        const token = config.get('access_token') || '';
-        if (token) {
-          url += filter ? '&' : '?';
-          url += 'access_token=' + token;
-        }
-        return url;
-      },
+const statics = {
+  /**
+   * Get baseUrl from config and make sure there is a slash at the end.
+   * @return {string} The API base URL
+   */
+  _getBaseUrl: function _getBaseUrl() {
+    let baseUrl = config.get('baseUrl') || '';
+    if (baseUrl.slice(-1) !== '/') {
+      baseUrl += '/';
+    }
+    return baseUrl;
+  },
 
-      /**
-       * Normalizes the queries objects.
-       * @param  {array} queries Array of queries objects
-       * @return {array}         Array of normalized queries objects
-       */
-      _normalizeQueries(queries) {
-        return queries.map(({
-          name,
-          filter,
-          endpoint,
-          params = {},
-          autoLoad = true,
-          transform = 'array'
-        }) => {
-          // Remove leading slash
-          if (endpoint.slice(0, 1) === '/') {
-            endpoint = endpoint.slice(1);
-          }
-          // Remove trailing slash
-          if (endpoint.slice(-1) === '/') {
-            endpoint = endpoint.slice(0,-1);
-          }
+  /**
+   * Given the endpoint and its filter, this will build the full
+   * URL to query Loopback
+   * @param  {string} endpoint Name of the route
+   * @param  {object} filter   Filter object
+   * @return {string}          Loopback URL
+   */
+  _buildUrl: function _buildUrl(endpoint, filter) {
+    const baseUrl = this._getBaseUrl();
+    let url = baseUrl + endpoint;
+    if (filter) {
+      url += '?filter=' + encodeURIComponent(JSON.stringify(filter));
+    }
+    const token = config.get('access_token') || '';
+    if (token) {
+      url += filter ? '&' : '?';
+      url += 'access_token=' + token;
+    }
+    return url;
+  },
 
-          if (typeof transform === 'string') {
-            transform = this['_transform_' + transform];
-          }
-          if (typeof transform !== 'function') {
-            throw new Error('Unknown type of transform option:' + (typeof transform));
-          }
-
-          name = name || endpoint.replace(/\W+/g, '-');
-
-          return {
-            name,
-            filter,
-            endpoint,
-            params,
-            autoLoad,
-            transform
-          };
-        });
-      },
-
-      /**
-       * Transform function that keeps data as array, optionally concatening new
-       * results.
-       * @param  {array}  json    JSON data received from LoopBack API
-       * @param  {array}  data    Previouly received data
-       * @param  {object} filter  Filter object used to query LoopBack API
-       * @param  {object} params  Params object passed to filter function
-       * @param  {object} options Options object passed to load method
-       * @return {array}          The resulting array that inner component will
-       *                          receive
-       */
-      _transform_array(json, data, filter, params, {append = false}) {
-        return append ?
-          data.concat(json) :
-          json;
-      },
-
-      /**
-       * Transform function that keeps data as a key-value object, where key is
-       * the id of the row and value is the row.
-       * @param  {array}  json    JSON data received from LoopBack API
-       * @param  {array}  data    Previouly received data
-       * @param  {object} filter  Filter object used to query LoopBack API
-       * @param  {object} params  Params object passed to filter function
-       * @param  {object} options Options object passed to load method
-       * @return {object}         The resulting object that inner component will
-       *                          receive
-       */
-      _transform_object(json, data, filter, params, {id = 'id', reset = false}) {
-        const newData = _.indexBy(json, id);
-        if (reset) {
-          return newData;
-        }
-        return _.assign({}, data, newData);
+  /**
+   * Normalizes the queries objects.
+   * @param  {array} queries Array of queries objects
+   * @return {array}         Array of normalized queries objects
+   */
+  _normalizeQueries: function _normalizeQueries(queries) {
+    return queries.map(({
+      name,
+      filter,
+      endpoint,
+      params = {},
+      autoLoad = true,
+      transform = 'array'
+    }) => {
+      // Remove leading slash
+      if (endpoint.slice(0, 1) === '/') {
+        endpoint = endpoint.slice(1);
       }
-    },
+      // Remove trailing slash
+      if (endpoint.slice(-1) === '/') {
+        endpoint = endpoint.slice(0,-1);
+      }
 
+      if (typeof transform === 'string') {
+        transform = this['_transform_' + transform];
+      }
+      if (typeof transform !== 'function') {
+        throw new Error('Unknown type of transform option:' + (typeof transform));
+      }
+
+      name = name || endpoint.replace(/\W+/g, '-');
+
+      return {
+        name,
+        filter,
+        endpoint,
+        params,
+        autoLoad,
+        transform
+      };
+    });
+  },
+
+  /**
+   * Transform function that keeps data as array, optionally concatening new
+   * results.
+   * @param  {array}  json    JSON data received from LoopBack API
+   * @param  {array}  data    Previouly received data
+   * @param  {object} filter  Filter object used to query LoopBack API
+   * @param  {object} params  Params object passed to filter function
+   * @param  {object} options Options object passed to load method
+   * @return {array}          The resulting array that inner component will
+   *                          receive
+   */
+  _transform_array: function _transform_array(json, data, filter, params, {append = false}) {
+    return append ?
+      data.concat(json) :
+      json;
+  },
+
+  /**
+   * Transform function that keeps data as a key-value object, where key is
+   * the id of the row and value is the row.
+   * @param  {array}  json    JSON data received from LoopBack API
+   * @param  {array}  data    Previouly received data
+   * @param  {object} filter  Filter object used to query LoopBack API
+   * @param  {object} params  Params object passed to filter function
+   * @param  {object} options Options object passed to load method
+   * @return {object}         The resulting object that inner component will
+   *                          receive
+   */
+  _transform_object: function _transform_object(json, data, filter, params, {id = 'id', reset = false}) {
+    const newData = _.indexBy(json, id);
+    if (reset) {
+      return newData;
+    }
+    return _.assign({}, data, newData);
+  }
+};
+
+
+  class Wrapper extends React.Component {
     /**
      * Data fetching is started as soon as possible
      */
     componentWillMount() {
       // creates internal structures
-      this._queries = _.indexBy(DataLoader._normalizeQueries(options.queries), 'name');
+      this._queries = _.indexBy(statics._normalizeQueries(options.queries), 'name');
       this._data = _(this._queries)
-        .map(q => [q.name, []])
-        .zipObject()
-        .value();
-
+        .map(q => q.name)
+        .reduce((p,c) => ({ ...p, [c]: { value: [], loaded: false } }), {});
 
       // creates a debounced version of load function for each query
       this._queries = _.mapValues(this._queries, q => ({
@@ -222,9 +225,18 @@ export function createDataLoader(Component, options = {}) {
         load: debounce((options) => this._load(q.name, options), 200, false)
       }));
 
+
+      this.autoLoadAll();
+    }
+
+    componentWillReceiveProps() {
+      this.autoLoadAll();
+    }
+
+    autoLoadAll() {
       // autoload, if allowed
       _.map(this._queries, ({name, autoLoad}) => autoLoad && this.load(name));
-    },
+    }
 
     /**
      * Loads data from LoopBack API. Receives the name of the query to be used, the
@@ -262,22 +274,21 @@ export function createDataLoader(Component, options = {}) {
       _.assign(cfg.params, params);
 
       cfg.load(options);
-    },
+    }
 
     _load(name, options) {
       const cfg = this._queries[name];
 
       const filter = typeof cfg.filter === 'function' ?
-        cfg.filter(cfg.params) :
+        cfg.filter(cfg.params, this.props) :
         cfg.filter;
 
       if (filter === false) {
         return;
       }
 
-      const url = DataLoader._buildUrl(cfg.endpoint, filter);
+      const url = statics._buildUrl(cfg.endpoint, filter);
 
-      this._data[cfg.name] = { loaded: false };
       this.forceUpdate();
 
       fetch(url)
@@ -303,36 +314,18 @@ export function createDataLoader(Component, options = {}) {
             return this._data[cfg.name] = { ...data, reload };
           })
         .then(() => this.forceUpdate());
-    },
+    }
 
     render() {
       return (
         <Component
-          ref="component"
           dataloader={this}
           {...this.props}
           {...this._data}
         />
       );
     }
-  };
+  }
 
-  /**
-   * Create the methods of inner component directly on wrapper
-   */
-  const { extendMethods = [] } = options;
-  extendMethods.forEach(methodName => {
-    spec[methodName] = function (...args) {
-      return this.refs.component[methodName](...args);
-    };
-  });
-
-  /**
-   * The wrapper component that will manage the data fetching. It is the return
-   * value of the `createDataLoader` function and the value of `dataloader`
-   * property of wrapped component.
-   */
-  const DataLoader = React.createClass(spec);
-
-  return DataLoader;
+   return hoistStatics(Wrapper, Component);
 }
